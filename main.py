@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 import joblib
 import pandas as pd
 import numpy as np
@@ -10,12 +10,32 @@ model = joblib.load("cart_abandonment_model (1).pkl")
 
 @app.get("/")
 def home():
-    return {"message": "Cart Abandonment Predictor API is live"}
+    return {"message": "ML Portfolio API is live"}
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
+    
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(
+            status_code=400, 
+            detail="Only CSV files are accepted"
+        )
+    
     contents = await file.read()
+    
+    if len(contents) == 0:
+        raise HTTPException(
+            status_code=400, 
+            detail="Uploaded file is empty"
+        )
+    
     df = pd.read_csv(io.BytesIO(contents))
+    
+    if df.empty:
+        raise HTTPException(
+            status_code=400,
+            detail="CSV file contains no data"
+        )
     
     predictions = model.predict(df)
     probabilities = model.predict_proba(df)[:, 1]
